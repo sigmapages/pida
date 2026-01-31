@@ -55,6 +55,11 @@ pida/ ├─ README.md ├─ LICENSE ├─ spec/ │  └─ pida.md ├─ wo
 
 ---
 
+## How to setup
+Read the `pida/SETUP.md`
+
+---
+
 ## License
 
 GNU Lesser General Public License v3.0 (LGPLv3)
