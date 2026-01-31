@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>PIDA v0.9.5</title>
+
+<style>
+body{background:#0f1220;color:#e6e8ff;font-family:system-ui;padding:20px}
+.panel{background:#171a2b;border:1px solid #2a2f55;border-radius:12px;padding:16px;margin-bottom:16px}
+input{width:100%;padding:8px;margin:6px 0 10px;border-radius:8px;background:#0c0f1f;color:#fff;border:1px solid #2a2f55}
+button{background:#2b5cff;color:#fff;border:none;border-radius:8px;padding:8px 14px;margin:4px;cursor:pointer}
+button:active{transform:translateY(2px)}
+button:disabled{background:#555}
+.msg{padding:8px;border-bottom:1px solid #2a2f55;cursor:pointer}
+.msg:hover{background:#1e2240}
+.nick{font-weight:600}
+.time{font-size:12px;color:#9aa0ff}
+.status{font-size:13px}
+.ok{color:#27d17c}.err{color:#ff4d4d}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+  <h2>PIDA v0.9.5</h2>
+  <input id="server" placeholder="Server URL">
+  <input id="myUUID" placeholder="My Inbox UUID">
+  <button onclick="createKey()">Create Key</button>
+</div>
+
+<div class="panel">
+  <h3>Send</h3>
+  <input id="toUUID" placeholder="To UUID">
+  <input id="nickname" placeholder="Your Nickname">
+  <input id="msg" placeholder="Message">
+  <button onclick="lock(this,sendMsg)">Send</button>
+  <div id="sendStatus" class="status"></div>
+</div>
+
+<div class="panel">
+  <button onclick="lock(this,sync)">Sync Inbox</button>
+  <button onclick="ack()">ACK (Clear Server)</button>
+  <button onclick="clearLocal()">Clear My Inbox (Local)</button>
+  <h3>Inbox</h3>
+  <div id="inbox"></div>
+  <div id="syncStatus" class="status"></div>
+</div>
+
+<script>
+/* ===== utils ===== */
+const $=id=>document.getElementById(id)
+function lock(btn,fn){btn.disabled=true;fn().finally(()=>setTimeout(()=>btn.disabled=false,1000))}
+function ok(el,msg){el.textContent="✔ "+msg;el.className="status ok"}
+function err(el,msg){el.textContent="✖ "+msg;el.className="status err"}
+
+/* ===== persist ===== */
+$("server").value=localStorage.server||"https://pida.thilan89757.workers.dev"
+$("myUUID").value=localStorage.myUUID||""
+$("nickname").value=localStorage.nickname||""
+$("server").onchange=()=>localStorage.server=$("server").value
+$("myUUID").onchange=()=>localStorage.myUUID=$("myUUID").value
+$("nickname").onchange=()=>localStorage.nickname=$("nickname").value
+
+/* ===== IndexedDB v2 ===== */
+let db
+const req=indexedDB.open("pida",2)
+req.onupgradeneeded=e=>{
+  const db=e.target.result
+  if(!db.objectStoreNames.contains("inbox")){
+    db.createObjectStore("inbox",{keyPath:"id"})
+  }
+}
+req.onsuccess=e=>{db=e.target.result;loadLocal()}
+
+/* ===== DB ===== */
+function saveLocal(m){
+  db.transaction("inbox","readwrite").objectStore("inbox").put(m)
+}
+function loadLocal(){
+  $("inbox").innerHTML=""
+  db.transaction("inbox","readonly").objectStore("inbox")
+    .openCursor().onsuccess=e=>{
+      const c=e.target.result
+      if(!c) return
+      renderMsg(c.value)
+      c.continue()
+    }
+}
+function clearLocal(){
+  db.transaction("inbox","readwrite").objectStore("inbox").clear()
+  $("inbox").innerHTML=""
+  alert("Local inbox cleared")
+}
+
+/* ===== crypto ===== */
+let aesKey
+async function getKey(){
+  if(aesKey) return aesKey
+  const raw=new TextEncoder().encode($("myUUID").value)
+  aesKey=await crypto.subtle.importKey(
+    "raw",await crypto.subtle.digest("SHA-256",raw),
+    "AES-GCM",false,["encrypt","decrypt"]
+  )
+  return aesKey
+}
+async function encrypt(t){
+  const iv=crypto.getRandomValues(new Uint8Array(12))
+  const key=await getKey()
+  const buf=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(t))
+  return {cipher:btoa(String.fromCharCode(...new Uint8Array(buf))),iv:btoa(String.fromCharCode(...iv))}
+}
+async function decrypt(c,i){
+  const key=await getKey()
+  const data=Uint8Array.from(atob(c),x=>x.charCodeAt(0))
+  const iv=Uint8Array.from(atob(i),x=>x.charCodeAt(0))
+  const buf=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,data)
+  return new TextDecoder().decode(buf)
+}
+
+/* ===== actions ===== */
+function createKey(){
+  $("myUUID").value=crypto.randomUUID()
+  localStorage.myUUID=$("myUUID").value
+  aesKey=null
+}
+
+async function sendMsg(){
+  try{
+    const enc=await encrypt($("msg").value)
+    const payload = {
+  toUUID: $("toUUID").value.trim(),
+  fromUUID: $("myUUID").value.trim(),
+  fromNick: $("nickname").value.trim(),
+  ...enc
+    
+    }
+    const r=await fetch($("server").value+"/send",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    })
+    r.ok?ok($("sendStatus"),"Sent"):err($("sendStatus"),"Failed")
+  }catch(e){err($("sendStatus"),"Exception")}
+}
+
+async function sync(){
+  try{
+    const r=await fetch(`${$("server").value}/inbox/${$("myUUID").value}`)
+    const arr=await r.json()
+    for(const m of arr){
+      const txt=await decrypt(m.cipher,m.iv)
+      const msg={...m,txt}
+      saveLocal(msg)
+      renderMsg(msg)
+    }
+    ok($("syncStatus"),"Synced "+arr.length)
+  }catch(e){err($("syncStatus"),"Sync error")}
+}
+
+function renderMsg(m){
+  const d=document.createElement("div")
+  d.className="msg"
+  d.innerHTML=`<div class="nick">${m.fromNick||"Unknown"}</div>
+               <div class="time">${new Date(m.createdAt).toLocaleString()}</div>`
+  d.onclick=()=>alert(
+    "Nickname: "+(m.fromNick||"")+
+    "\nUUID: "+(m.fromUUID||"")+
+    "\nTime: "+new Date(m.createdAt).toLocaleString()+
+    "\n\nMessage:\n"+m.txt
+  )
+  $("inbox").appendChild(d)
+}
+
+async function ack(){
+  const r=await fetch(`${$("server").value}/ack/${$("myUUID").value}`,{method:"POST"})
+  alert(r.ok?"Server inbox cleared":"ACK failed")
+}
+</script>
+</body>
+  </html>
