@@ -51,7 +51,16 @@ where privacy comes from architecture rather than policy.
 ---
 
 ## Repository structure
-pida/ ├─ README.md ├─ LICENSE ├─ spec/ │  └─ pida.md ├─ worker/ │  └─ worker.js ├─ client/ │  └─ index.html └─ demo/ └─ README.md
+pida/ 
+├─ README.md 
+├─ LICENSE 
+├─ spec/ │  
+  └─ pida.md 
+├─ worker/ │  
+  └─ worker.js 
+├─ client/ │  
+  └─ index.html 
+├─ README.md
 
 ---
 
