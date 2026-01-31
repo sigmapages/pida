@@ -18,7 +18,7 @@ inbox-based messaging where users own their inbox data.
   "createdAt": 1700000000000
 }
 ```
-##Delivery Flow
+## Delivery Flow
 1.Sender encrypts message locally
 2.Sender POSTs message to relay
 3.Relay stores message temporarily
@@ -26,12 +26,12 @@ inbox-based messaging where users own their inbox data.
 5.Receiver stores message locally
 6.Receiver sends ACK
 7.Relay deletes acknowledged messages
-##Storage
+## Storage
 - Relay storage is temporary only
 - Clients are responsible for local persistence
-##TTL
+## TTL
 Default message TTL: 5 days
-##Non-goals
+## Non-goals
 - Real-time messaging
 - Presence or online status
 - Centralized identity
