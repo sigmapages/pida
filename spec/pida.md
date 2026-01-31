@@ -17,6 +17,7 @@ inbox-based messaging where users own their inbox data.
   "iv": "base64",
   "createdAt": 1700000000000
 }
+```
 ##Delivery Flow
 1.Sender encrypts message locally
 2.Sender POSTs message to relay
