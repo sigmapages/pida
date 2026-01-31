@@ -27,7 +27,6 @@ as an experimental Internet building block.
 
 ## Architecture
 Sender Web → PIDA API → Serverless Relay (temporary storage) → Receiver Web → Local Inbox (IndexedDB / file) → ACK → Relay deletes message
-Sao chép mã
 
 ---
 
