@@ -19,7 +19,7 @@ as an experimental Internet building block.
 - Identity via UUID (key-based)
 - Serverless or self-hosted relays
 - End-to-end encryption on the client
-- Local inbox storage (IndexedDB, file, or KV)
+- Local inbox storage (IndexedDB, file local)
 - ACK-based delivery and deletion
 - TTL-based message expiry
 
@@ -51,16 +51,23 @@ where privacy comes from architecture rather than policy.
 ---
 
 ## Repository structure
+```
 pida/ 
+
 ├─ README.md 
-├─ LICENSE 
+
+├─ LICENSE
+
 ├─ spec/ │  
-  └─ pida.md 
-├─ worker/ │  
-  └─ worker.js 
+       └─ pida.md
+  
+├─ worker/ │
+       └─ worker.js 
+       
+       
 ├─ client/ │  
-  └─ index.html 
-├─ README.md
+       └─ index.html
+```
 
 ---
 
