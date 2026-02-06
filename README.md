@@ -22,6 +22,8 @@ as an experimental Internet building block.
 - Local inbox storage (IndexedDB, file local)
 - ACK-based delivery and deletion
 - TTL-based message expiry
+- Green technology because it uses Serverless, saving energy and consuming less CPU time (a few milliseconds).
+- Each user sets up their own Severless configuration, giving PIDA the potential for infinite scaling.
 
 ---
 
