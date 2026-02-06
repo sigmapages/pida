@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Sigmapages
+// The license to use the source code is GNU Lesser GPLv3 (in the LICENSE file).
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
