@@ -36,7 +36,7 @@ Restores an existing identity using a known UUID.
 - Usage: Crucial for cross-device synchronization and account recovery.
 
 ### 2 Messaging Operations
-1.send_message(to_id, peer_pub_pem, content)
+#### 1.send_message(to_id, peer_pub_pem, content)
 Encrypts and sends a message to a specific recipient.
 
 - Parameters:
@@ -49,7 +49,7 @@ Encrypts and sends a message to a specific recipient.
 
 - Process: Includes a Proof of Work (PoW) calculation to prevent spam on the relay.
 
-2.sync() Fetches and decrypts all pending messages for the current identity.
+#### 2.sync() Fetches and decrypts all pending messages for the current identity.
 
 - Process: 1. Requests a cryptographic challenge from the relay.
 - Signs the challenge using the Private Key (ECDSA).
