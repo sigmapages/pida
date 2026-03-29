@@ -1,15 +1,15 @@
 ## 1. Core Requirements
 To use the pypida library, the following environment and dependencies are required:
 
-Python: >= 3.7
+- Python: >= 3.7
 
-Dependencies: * cryptography: For ECC (Elliptic Curve Cryptography) operations.
+- Dependencies: * cryptography: For ECC (Elliptic Curve Cryptography) operations.
 
-requests: For interacting with the Cloudflare Worker Relay.
+- requests: For interacting with the Cloudflare Worker Relay.
 
-hashlib: For deterministic seed generation.
+- hashlib: For deterministic seed generation.
 
-Relay Server: A compatible Cloudflare Worker with KV namespace binding.
+- Relay Server: A compatible Cloudflare Worker with KV namespace binding.
 ---
 ## 2. Protocol Logic: Deterministic - Identity: Unlike standard PGP or SSH keys that require manual file management, Pypida uses a Deterministic derivation model.
 
