@@ -55,14 +55,14 @@ Encrypts and sends a message to a specific recipient.
 - Signs the challenge using the Private Key (ECDSA).
 - Retrieves encrypted payloads and decrypts them locally.
 
-3.ack(message_id)
+#### 3.ack(message_id)
 Acknowledges receipt of a message, allowing the relay to delete it.
 
 - Usage: Helps keep the KV storage clean and ensures message privacy (Delete-on-Read).
 ---
 ## 4. Implementation Example
-Python
 
+Python
 from pypida import PIDA
 
 ### 1. Setup Relay
