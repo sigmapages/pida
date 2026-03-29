@@ -1,28 +1,21 @@
 import requests
 import uuid
-import time
-import hashlib
-import json
 import base64
-import os
-from cryptography.hazmat.primitives import hashes, serialization
+import hashlib, uuid, os, json, requests
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.ciphers.aead import AEaead
-
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 class PIDA:
+    CONFIG_FILE = ".pida_config"
+
     def __init__(self, relay_url, seed_uuid):
         self.relay_url = relay_url
         self.id = seed_uuid
-        
-        # TÍNH DETERMINISTIC: Tạo Private Key từ UUID
+        # Deterministic Key Derivation: UUID -> SHA256 -> P-256 Private Key
         seed = hashlib.sha256(self.id.encode()).digest()
-        self.private_key = ec.derive_private_key(
-            int.from_bytes(seed, "big"), 
-            ec.SECP256R1()
-        )
-        
+        self.private_key = ec.derive_private_key(int.from_bytes(seed, "big"), ec.SECP256R1())
         self.public_key = self.private_key.public_key()
         self.pub_key_pem = self.public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
@@ -30,43 +23,49 @@ class PIDA:
         ).decode()
 
     @classmethod
-    def create(cls, relay_url):
-        """Lệnh 1: Tạo mới hoàn toàn một Identity (UUIDv4/v8)"""
-        new_uuid = str(uuid.uuid4()) # Hoặc logic v8 của ông
-        print(f"✨ Đã tạo Identity mới: {new_uuid}")
-        print("⚠️ Hãy lưu UUID này lại, mất là mất luôn tài khoản!")
-        return cls(relay_url, new_uuid)
+    def create(cls, relay_url, save_local=True):
+        new_id = str(uuid.uuid4())
+        client = cls(relay_url, new_id)
+        if save_local: client._save_config()
+        return client
 
     @classmethod
-    def import_id(cls, relay_url, existing_uuid):
-        """Lệnh 2: Nhập Identity cũ để khôi phục cặp khóa"""
-        print(f"🔑 Đang khôi phục Identity: {existing_uuid}")
-        return cls(relay_url, existing_uuid)
+    def import_id(cls, relay_url, existing_uuid, save_local=True):
+        client = cls(relay_url, existing_uuid)
+        if save_local: client._save_config()
+        return client
 
-    # --- IDENTITY & UUIDv8 ---
-    def create_identity(self):
-        # Tạo cặp khóa ECDSA (p256)
-        self.priv_key = ec.generate_private_key(ec.SECP256R1())
-        self.pub_key = self.priv_key.public_key()
-        
-        # UUIDv8 giả lập (Custom bits): 48 bit timestamp + random
-        # Trong Python, uuid.uuid8() có trong bản 3.12+, tui viết custom cho tương thích
-        self.id = str(uuid.uuid4()) # Thay bằng logic UUIDv8 nếu cần sortable
-        self.priv_key_pem = self.priv_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ).decode()
-        self.pub_key_pem = self.pub_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode()
+    @classmethod
+    def load_local(cls, relay_url):
+        if os.path.exists(cls.CONFIG_FILE):
+            with open(cls.CONFIG_FILE, "r") as f:
+                return cls(relay_url, json.load(f)["uuid"])
+        return None
 
-    def load_identity(self, data):
-        self.id = data['id']
-        self.priv_key = serialization.load_pem_private_key(data['priv'].encode(), password=None)
-        self.pub_key = self.priv_key.public_key()
+    def _save_config(self):
+        # Thử lưu, nếu chmod không được thì cũng không crash app
+        try:
+            with open(self.CONFIG_FILE, "w") as f:
+                json.dump({"uuid": self.id}, f)
+            
+            if os.name != 'nt':
+                os.chmod(self.CONFIG_FILE, 0o600)
+                # Kiểm tra lại xem chmod có thực sự ăn không
+                mode = stat.S_IMODE(os.stat(self.CONFIG_FILE).st_mode)
+                if mode != 0o600:
+                    print("⚠️ Note: File is on a storage that doesn't support chmod (e.g. SD Card)")
+        except Exception as e:
+            print(f"❌ Save config failed: {e}")
 
+    def encrypt(self, data, peer_pub_pem):
+        peer_pub = serialization.load_pem_public_key(peer_pub_pem.encode())
+        shared_key = self.private_key.exchange(ec.ECDH(), peer_pub)
+        derived_key = hashlib.sha256(shared_key).digest()
+        aesgcm = AESGCM(derived_key)
+        nonce = os.urandom(12)
+        return nonce + aesgcm.encrypt(nonce, data.encode(), None)
+
+    # Thêm các hàm sync/send/ack tùy theo logic Worker của ông ở đây
     # --- CRYPTO: E2EE & ECDH ---
     def _get_shared_secret(self, peer_pub_pem):
         peer_pub = serialization.load_pem_public_key(peer_pub_pem.encode())
