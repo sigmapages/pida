@@ -1,9 +1,9 @@
 
 const B2_CONFIG = {
-  keyId: '004091d86c20d840000000001',
-  applicationKey: 'K004JFhZsDG5zWv17LL8S6wWAZhDyRA',
-  bucketId: 'e089c14d48564c3290dd0814',
-  bucketName: 'PIDA-b2',
+  keyId: 'your key id here',
+  applicationKey: 'your key here',
+  bucketId: 'your bucket id here',
+  bucketName: 'your bucket name',
   apiUrl: 'https://api004.backblazeb2.com'
 };
 
